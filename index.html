@@ -56,11 +56,11 @@
       const audioCtx = new AudioContext();
       const oscillator = audioCtx.createOscillator();
       const gainNode = audioCtx.createGain();
-
-      oscillator.connect(gainNode);
-      gainNode.connect(audioCtx.destination);
+      let mode = false;
+      gainNode.gain.value = 0;
 
       oscillator.type = "sine";
+      oscillator.start();
 
       const frequencySlider = document.getElementById("frequencySlider");
       const frequencyInput = document.getElementById("frequencyInput");
@@ -95,9 +95,18 @@
 
       startButton.addEventListener("click", () => {
         audioCtx.resume().then(() => {
-          gainNode.gain.value = 0;
-          oscillator.start();
-          startButton.disabled = true;
+          if (mode) {
+            mode = false;
+            oscillator.disconnect(gainNode);
+            gainNode.disconnect(audioCtx.destination);
+            // oscillator.stop();
+            startButton.innerHTML = "Start Sound";
+          } else {
+            mode = true;
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            startButton.innerHTML = "Stop Sound";
+          }
         });
       });
     </script>
