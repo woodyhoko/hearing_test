@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Sound Adjustment</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Sound Adjustment</h2>
+
+    <div>
+      <label for="frequency">Frequency (Hz):</label>
+      <input type="range" id="frequency" min="100" max="8000" value="440" />
+      <span id="frequencyValue">440</span>
+    </div>
+
+    <div>
+      <label for="volume">Volume:</label>
+      <input type="range" id="volume" min="0" max="1" value="0.5" step="0.01" />
+      <span id="volumeValue">50%</span>
+    </div>
+
+    <script>
+      const audioCtx = new AudioContext();
+      const oscillator = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+
+      oscillator.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+
+      oscillator.type = "sine"; // You can change this to 'square', 'sawtooth', 'triangle'
+      oscillator.start();
+
+      const frequencySlider = document.getElementById("frequency");
+      const frequencyValue = document.getElementById("frequencyValue");
+      const volumeSlider = document.getElementById("volume");
+      const volumeValue = document.getElementById("volumeValue");
+
+      frequencySlider.addEventListener("input", (event) => {
+        const frequency = event.target.value;
+        oscillator.frequency.value = frequency;
+        frequencyValue.textContent = frequency;
+      });
+
+      volumeSlider.addEventListener("input", (event) => {
+        const volume = event.target.value;
+        gainNode.gain.value = volume;
+        volumeValue.textContent = (volume * 100).toFixed(0) + "%";
+      });
+    </script>
+  </body>
+</html>
