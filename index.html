@@ -51,12 +51,15 @@
     </div>
 
     <button id="startButton">Start Sound</button>
+    <button id="switchButton">Switch ear</button>
 
     <script>
       const audioCtx = new AudioContext();
       const oscillator = audioCtx.createOscillator();
       const gainNode = audioCtx.createGain();
+      const pannerNode = audioCtx.createStereoPanner(); // For panning
       let mode = false;
+      let rightmode = -1;
       gainNode.gain.value = 0;
 
       oscillator.type = "sine";
@@ -67,6 +70,7 @@
       const volumeSlider = document.getElementById("volumeSlider");
       const volumeInput = document.getElementById("volumeInput");
       const startButton = document.getElementById("startButton");
+      const switchButton = document.getElementById("switchButton");
 
       function updateFrequency(value) {
         oscillator.frequency.value = value;
@@ -99,13 +103,27 @@
             mode = false;
             oscillator.disconnect(gainNode);
             gainNode.disconnect(audioCtx.destination);
+            pannerNode.disconnect(audioCtx.destination);
             // oscillator.stop();
             startButton.innerHTML = "Start Sound";
           } else {
             mode = true;
             oscillator.connect(gainNode);
             gainNode.connect(audioCtx.destination);
+            pannerNode.connect(audioCtx.destination);
+            pannerNode.pan.setValue(rightmode);
             startButton.innerHTML = "Stop Sound";
+          }
+        });
+      });
+      switchButton.addEventListener("click", () => {
+        audioCtx.resume().then(() => {
+          if (rightmode < 0) {
+            rightmode = 1;
+            pannerNode.pan.setValue(rightmode);
+          } else {
+            rightmode = -1;
+            pannerNode.pan.setValue(rightmode);
           }
         });
       });
