@@ -1,130 +1,75 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <title>Sound Adjustment</title>
-    <style>
-      body {
-        font-family: sans-serif;
-        text-align: center;
-      }
-    </style>
-  </head>
-  <body>
-    <h2>Sound Adjustment</h2>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Professional Audiometry Test</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="app">
+        <!-- Home Screen -->
+        <div id="home-screen" class="screen active">
+            <div class="card">
+                <h1>Audiometry Test</h1>
+                <p>Ensure you are in a quiet environment and wearing your Sennheiser PXC 550 II.</p>
+                <div class="warning-box">
+                    <p><strong>Strict Calibration Required:</strong> To map theoretical absolute Hearing Levels, you MUST set your OS master volume to <strong>100%</strong>, and ensure the touch volume on the headphones is maximum.</p>
+                </div>
+                <div class="warning-box" style="background-color: rgba(59, 130, 246, 0.1); border-color: var(--primary);">
+                    <p><strong>Safety Note:</strong> A software safety lock is engaged. The test will not exceed 80 dB HL. It starts quietly at 30 dB HL and adapts to your hearing.</p>
+                </div>
+                <button id="btn-start" class="btn primary">Start Diagnostic</button>
+            </div>
+        </div>
 
-    <div>
-      <label for="frequencySlider">Frequency (Hz):</label>
-      <input
-        type="range"
-        id="frequencySlider"
-        min="10"
-        max="8000"
-        value="500"
-      />
-      <input
-        type="number"
-        id="frequencyInput"
-        min="10"
-        max="8000"
-        value="500"
-      />
+        <!-- Testing Screen -->
+        <div id="test-screen" class="screen">
+            <div class="test-header">
+                <h2>Diagnostic in Progress</h2>
+                <div class="status-container">
+                    <div class="info-pill">Phase: <span id="test-phase">Pure Tone</span> (<span id="test-phase-out-of">1/2</span>)</div>
+                    <div class="info-pill">Progress: <span id="test-progress">0%</span></div>
+                </div>
+            </div>
+            
+            <div class="card test-card">
+                <div class="instruction-box">
+                    <p>Press the button <strong>ONLY</strong> when you hear a tone.</p>
+                    <p class="secondary-info">(You may hear soft static noise in one ear during Phase 2; focus on the beeps)</p>
+                </div>
+
+                <div id="warning-message" class="warning-message hidden">
+                    Please press the button only when you hear the tone.
+                </div>
+
+                <button id="btn-respond" class="btn huge pulse">I Hear It</button>
+            </div>
+        </div>
+
+        <!-- Results Screen -->
+        <div id="results-screen" class="screen">
+            <div class="card results-card">
+                <h2>Your Audiogram</h2>
+                <p class="subtitle">Relative Hearing Thresholds (Lower numbers = better hearing)</p>
+                
+                <div class="graph-container">
+                    <canvas id="audiogram" width="700" height="400"></canvas>
+                </div>
+                
+                <div class="legend">
+                    <div class="legend-item"><span class="swatch blue">X</span> Left Ear (Pure Tone)</div>
+                    <div class="legend-item"><span class="swatch red">O</span> Right Ear (Pure Tone)</div>
+                    <div class="legend-item"><span class="swatch blue dashed">---</span> Left (Masked)</div>
+                    <div class="legend-item"><span class="swatch red dashed">---</span> Right (Masked)</div>
+                </div>
+                
+                <button id="btn-restart" class="btn secondary">Retest</button>
+            </div>
+        </div>
     </div>
-
-    <div>
-      <label for="volumeSlider">Volume:</label>
-      <input
-        type="range"
-        id="volumeSlider"
-        min="0"
-        max="100"
-        value="0"
-        step="1"
-      />
-      <input
-        type="number"
-        id="volumeInput"
-        min="0"
-        max="100"
-        value="0"
-        step="1"
-      />
-    </div>
-
-    <button id="startButton">Start Sound</button>
-    <button id="switchButton">Switch ear</button>
-
-    <script>
-      const audioCtx = new AudioContext();
-      const oscillator = audioCtx.createOscillator();
-      const gainNode = audioCtx.createGain();
-      let pannerNode = audioCtx.createStereoPanner();
-      let mode = false;
-      let rightmode = -1;
-      gainNode.gain.value = 0;
-
-      oscillator.type = "sine";
-      oscillator.start();
-
-      const frequencySlider = document.getElementById("frequencySlider");
-      const frequencyInput = document.getElementById("frequencyInput");
-      const volumeSlider = document.getElementById("volumeSlider");
-      const volumeInput = document.getElementById("volumeInput");
-      const startButton = document.getElementById("startButton");
-      const switchButton = document.getElementById("switchButton");
-
-      function updateFrequency(value) {
-        oscillator.frequency.value = value;
-        frequencySlider.value = value;
-        frequencyInput.value = value;
-      }
-
-      function updateVolume(value) {
-        gainNode.gain.value = value / 100;
-        volumeSlider.value = value;
-        volumeInput.value = value;
-      }
-
-      frequencySlider.addEventListener("input", (event) =>
-        updateFrequency(event.target.value)
-      );
-      frequencyInput.addEventListener("input", (event) =>
-        updateFrequency(event.target.value)
-      );
-      volumeSlider.addEventListener("input", (event) =>
-        updateVolume(event.target.value)
-      );
-      volumeInput.addEventListener("input", (event) =>
-        updateVolume(event.target.value)
-      );
-
-      startButton.addEventListener("click", () => {
-        audioCtx.resume().then(() => {
-          if (mode) {
-            mode = false;
-            oscillator.disconnect(gainNode);
-            gainNode.disconnect(pannerNode);
-            startButton.innerHTML = "Start Sound";
-          } else {
-            mode = true;
-            oscillator.connect(gainNode);
-            gainNode.connect(pannerNode);
-            pannerNode.connect(audioCtx.destination);
-            pannerNode.pan.setValueAtTime(rightmode, audioCtx.currentTime);
-            startButton.innerHTML = "Stop Sound";
-          }
-        });
-      });
-      switchButton.addEventListener("click", () => {
-        audioCtx.resume().then(() => {
-          if (rightmode < 0) {
-            rightmode = 1;
-            pannerNode.pan.setValueAtTime(rightmode, audioCtx.currentTime);
-          } else {
-            rightmode = -1;
-            pannerNode.pan.setValueAtTime(rightmode, audioCtx.currentTime);
-          }
-        });
-      });
-    </script>
-  </body>
+    
+    <script src="app.js"></script>
+</body>
 </html>

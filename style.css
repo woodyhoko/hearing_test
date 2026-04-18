@@ -1,0 +1,226 @@
+:root {
+    --bg-color: #0f172a;
+    --card-bg: #1e293b;
+    --text-main: #f8fafc;
+    --text-muted: #94a3b8;
+    --primary: #3b82f6;
+    --primary-hover: #2563eb;
+    --success: #10b981;
+    --success-hover: #059669;
+    --warning: #ef4444;
+    --border: #334155;
+    
+    --left-ear: #3b82f6;
+    --right-ear: #ef4444;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Inter', sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-main);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+}
+
+#app {
+    width: 100%;
+    max-width: 800px;
+    padding: 2rem;
+    box-sizing: border-box;
+}
+
+.screen {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    animation: fadeIn 0.4s ease-out;
+}
+
+.screen.active {
+    display: flex;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+h1, h2 {
+    margin-top: 0;
+    font-weight: 600;
+}
+
+.subtitle {
+    color: var(--text-muted);
+    margin-top: -10px;
+    margin-bottom: 20px;
+}
+
+p {
+    line-height: 1.6;
+    color: var(--text-muted);
+}
+
+.card {
+    background-color: var(--card-bg);
+    padding: 2.5rem;
+    border-radius: 1rem;
+    border: 1px solid var(--border);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.warning-box {
+    background-color: rgba(239, 68, 68, 0.1);
+    border-left: 4px solid var(--warning);
+    padding: 1rem;
+    margin: 1.5rem 0;
+    text-align: left;
+}
+
+.warning-box p {
+    color: var(--text-main);
+    margin: 0;
+    font-size: 0.9rem;
+}
+
+.btn {
+    border: none;
+    border-radius: 0.5rem;
+    font-family: inherit;
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn.primary {
+    background-color: var(--primary);
+    color: white;
+    padding: 0.875rem 2rem;
+}
+
+.btn.primary:hover {
+    background-color: var(--primary-hover);
+    transform: translateY(-2px);
+}
+
+.btn.secondary {
+    background-color: transparent;
+    color: var(--text-main);
+    border: 1px solid var(--border);
+    padding: 0.875rem 2rem;
+}
+
+.btn.secondary:hover {
+    background-color: var(--border);
+}
+
+.btn.huge {
+    background-color: var(--success);
+    color: white;
+    padding: 2rem 4rem;
+    font-size: 1.5rem;
+    border-radius: 1rem;
+    width: 100%;
+    max-width: 400px;
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+}
+
+.btn.huge:hover {
+    background-color: var(--success-hover);
+    transform: scale(1.02);
+}
+
+.btn.huge:active {
+    transform: scale(0.98);
+}
+
+.test-header {
+    width: 100%;
+    margin-bottom: 2rem;
+}
+
+.status-container {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.info-pill {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border);
+    padding: 0.5rem 1rem;
+    border-radius: 2rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.instruction-box {
+    margin-bottom: 2rem;
+}
+
+.instruction-box p {
+    color: var(--text-main);
+    font-size: 1.125rem;
+}
+
+.secondary-info {
+    font-size: 0.875rem !important;
+    color: var(--text-muted) !important;
+    margin-top: 0.5rem !important;
+}
+
+.warning-message {
+    color: var(--warning);
+    font-weight: 500;
+    margin-bottom: 1rem;
+    min-height: 24px;
+}
+
+.warning-message.hidden {
+    visibility: hidden;
+}
+
+/* Results */
+.graph-container {
+    background-color: white;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin-bottom: 2rem;
+    overflow-x: auto;
+}
+
+.legend {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    font-size: 0.875rem;
+}
+
+.swatch {
+    font-weight: bold;
+    margin-right: 0.5rem;
+    font-size: 1.2rem;
+}
+
+.swatch.blue { color: var(--left-ear); }
+.swatch.red { color: var(--right-ear); }
+.swatch.dashed { letter-spacing: -2px; font-weight: normal; font-size: 1rem; }
