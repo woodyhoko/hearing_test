@@ -31,9 +31,28 @@ Each ear is tested independently. At each test frequency:
 
 **Contralateral masking** applies narrowband noise to the non-test ear to prevent cross-hearing via bone conduction. The masking level follows the **shadow curve rule**: masking = air-conduction threshold of test ear minus 40 dB interaural attenuation. This phase isolates the true air-conduction threshold of each ear.
 
-### 2.3 False-positive detection
+### 2.3 Random-guessing detection (statistical reliability check)
 
-A false-alarm trap fires a "silent" trial (tone amplitude = 0) at random intervals. If the subject responds during silence, a warning is displayed. This mirrors the clinical practice of monitoring for "button mashing" and inflated response rates.
+Self-administered tests are vulnerable to a subject who simply taps the button at random, producing a plausible-looking but meaningless audiogram. To detect this, the test interleaves hidden **silent catch-trials** and applies a **binomial hypothesis test** to the responses.
+
+**Catch-trials.** Roughly 1 in 5 trials (`CATCH_PROBABILITY = 0.20`) is a *silent* response window — same timing and same button as a real trial, but **no tone is ever played**. Catch-trials never lead a block and never run back-to-back, so they are unpredictable and the subject cannot learn to avoid them. They also never perturb the Hughson–Westlake state machine.
+
+**The signal.** Let *c* = number of catch-trials presented and *f* = number of those silent windows in which the subject responded (false alarms). An attentive, honest listener almost never responds to silence, so we model their false-alarm behaviour as a Bernoulli process with a small baseline rate *p₀ = 0.05*.
+
+**The test.** Under the null hypothesis *H₀ = "honest, attentive listener"*, the false-alarm count follows a Binomial(*c*, *p₀*) distribution. We compute the upper-tail p-value — the probability that an honest listener would produce *at least* as many false alarms purely by accident:
+
+$$p = P(X \ge f), \quad X \sim \mathrm{Binomial}(c,\, p_0)$$
+
+**Classification.**
+
+| Condition | Verdict |
+|---|---|
+| False-alarm rate ≥ 40% (≈ a coin flip) | **Random guessing** — thresholds discarded as untrustworthy |
+| p-value < 0.05 (significantly more false alarms than chance) | **Questionable** — retest advised |
+| Otherwise | **Reliable** — consistent with genuine listening |
+| Fewer than 4 catch-trials collected | **Not assessed** |
+
+The verdict, the false-alarm rate (*f/c*), and the binomial p-value are all displayed on the results screen above the audiogram. This mirrors the clinical practice of monitoring false-alarm rate to validate that thresholds reflect true hearing rather than button-mashing.
 
 ---
 

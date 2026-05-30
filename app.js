@@ -7,7 +7,8 @@ const DOM = {
     testPhaseOutof: document.getElementById('test-phase-out-of'),
     testProgress: document.getElementById('test-progress'),
     warningMessage: document.getElementById('warning-message'),
-    canvas: document.getElementById('audiogram')
+    canvas: document.getElementById('audiogram'),
+    reliabilityReport: document.getElementById('reliability-report')
 };
 
 function switchScreen(id) {
@@ -38,6 +39,17 @@ const RETSPL = {
 // 95 dB SPL is a much more accurate absolute max anchor for consumer Bluetooth hardware at 100% OS Volume.
 const MAX_SYSTEM_SPL = 95;
 
+// --- Random-guessing detection -------------------------------------------
+// "Catch trials" present a perfectly silent response window. An attentive,
+// honest listener essentially never responds during silence, whereas a
+// person clicking at random will trigger them at roughly their guessing
+// rate. The false-alarm count is then run through a binomial test to decide
+// whether the response pattern is statistically distinguishable from genuine
+// listening.
+const CATCH_PROBABILITY = 0.20;   // ~1 in 5 non-leading trials are silent
+const BASELINE_FA = 0.05;         // assumed false-alarm rate of an honest listener
+const MIN_CATCH_FOR_STATS = 4;    // need at least this many catch trials to judge
+
 // Test State
 let testBlocks = [];
 let currentBlockIndex = 0;
@@ -56,6 +68,14 @@ let trialDelayTimeout;
 let isResponseWindowActive = false;
 let hasRespondedThisTrial = false;
 let userHeard = false;
+
+// Catch-trial / reliability tracking
+let currentTrialIsCatch = false;
+let lastWasCatch = false;
+let catchTrials = 0;      // number of silent windows presented
+let falseAlarms = 0;      // responses given during those silent windows
+let realTrials = 0;       // number of real (audible-candidate) trials
+let realResponses = 0;    // responses given during real trials
 
 // Audio Utils
 function initAudio() {
@@ -184,7 +204,97 @@ function updateProgress() {
 function endDiagnostic() {
     stopMaskingNoise();
     switchScreen('results-screen');
+    renderReliability();
     drawAudiogram();
+}
+
+// --- Statistics ----------------------------------------------------------
+function logFactorial(n) {
+    let s = 0;
+    for (let i = 2; i <= n; i++) s += Math.log(i);
+    return s;
+}
+
+function binomPmf(k, n, p) {
+    if (p <= 0) return k === 0 ? 1 : 0;
+    if (p >= 1) return k === n ? 1 : 0;
+    const logC = logFactorial(n) - logFactorial(k) - logFactorial(n - k);
+    return Math.exp(logC + k * Math.log(p) + (n - k) * Math.log(1 - p));
+}
+
+// P(X >= k) for X ~ Binomial(n, p): the chance an honest listener produces at
+// least this many false alarms purely by accident.
+function binomUpperTail(k, n, p) {
+    let s = 0;
+    for (let i = k; i <= n; i++) s += binomPmf(i, n, p);
+    return Math.min(1, s);
+}
+
+// Classify the response pattern. The core signal is the catch-trial false-alarm
+// rate, validated against a binomial null model of an attentive listener.
+function assessReliability() {
+    const c = catchTrials, f = falseAlarms;
+    const pressRate = realTrials ? realResponses / realTrials : 0;
+
+    if (c < MIN_CATCH_FOR_STATS) {
+        return { verdict: 'insufficient', c, f, faRate: 0, pGenuine: 1, pressRate };
+    }
+
+    const faRate = f / c;
+    // p-value: how plausible this many false alarms is under honest listening.
+    const pGenuine = binomUpperTail(f, c, BASELINE_FA);
+
+    let verdict;
+    if (faRate >= 0.40) {
+        // Responding to ~half of silent trials ≈ a coin flip → guessing.
+        verdict = 'guessing';
+    } else if (pGenuine < 0.05) {
+        // Significantly more false alarms than an honest listener would give.
+        verdict = 'questionable';
+    } else {
+        verdict = 'reliable';
+    }
+    return { verdict, c, f, faRate, pGenuine, pressRate };
+}
+
+function renderReliability() {
+    if (!DOM.reliabilityReport) return;
+    const r = assessReliability();
+    const pct = x => (x * 100).toFixed(0) + '%';
+    const pStr = r.pGenuine < 0.001 ? '< 0.001' : r.pGenuine.toFixed(3);
+
+    const meta = {
+        reliable: {
+            cls: 'rel-good', icon: '✓', title: 'Results appear reliable',
+            note: 'Your responses are statistically consistent with genuine listening.'
+        },
+        questionable: {
+            cls: 'rel-warn', icon: '⚠', title: 'Results may be unreliable',
+            note: 'You responded during silence more often than an attentive listener typically would. Consider retesting in a quieter setting with full focus.'
+        },
+        guessing: {
+            cls: 'rel-bad', icon: '✕', title: 'Pattern consistent with random guessing',
+            note: 'Responses during silent catch-trials occurred about as often as a coin flip. These thresholds are not trustworthy — please retest and respond only to tones you actually hear.'
+        },
+        insufficient: {
+            cls: 'rel-warn', icon: 'ℹ', title: 'Reliability not assessed',
+            note: 'Too few catch-trials were collected to judge response validity.'
+        }
+    }[r.verdict];
+
+    let stats = '';
+    if (r.verdict !== 'insufficient') {
+        stats = `<div class="rel-stats">
+            <span><strong>${r.f}/${r.c}</strong> silent catch-trials triggered a response (false-alarm rate ${pct(r.faRate)})</span>
+            <span>Binomial p-value vs. honest listening: <strong>${pStr}</strong></span>
+        </div>`;
+    }
+
+    DOM.reliabilityReport.className = 'reliability ' + meta.cls;
+    DOM.reliabilityReport.innerHTML = `
+        <div class="rel-head"><span class="rel-icon">${meta.icon}</span><span class="rel-title">${meta.title}</span></div>
+        <p class="rel-note">${meta.note}</p>
+        ${stats}`;
 }
 
 function startNextBlock() {
@@ -207,6 +317,7 @@ function startNextBlock() {
     lastResult = null;
     ascentCount = {};
     trialsInThisBlock = 0;
+    lastWasCatch = false;
 
     scheduleTrial();
 }
@@ -216,7 +327,15 @@ function scheduleTrial() {
     const delay = 1000 + Math.random() * 1500;
 
     trialDelayTimeout = setTimeout(() => {
-        executeTrial();
+        // Decide whether this is a silent catch trial. We never lead a block
+        // with one (so Hughson-Westlake gets a clean start) and never run two
+        // back-to-back, which keeps catch trials unpredictable yet sparse.
+        const canCatch = !lastWasCatch && trialsInThisBlock >= 1;
+        if (canCatch && Math.random() < CATCH_PROBABILITY) {
+            executeCatchTrial();
+        } else {
+            executeTrial();
+        }
     }, delay);
 }
 
@@ -225,6 +344,8 @@ function executeTrial() {
     hasRespondedThisTrial = false;
     userHeard = false;
     isResponseWindowActive = true;
+    currentTrialIsCatch = false;
+    lastWasCatch = false;
 
     playTone(block.freq, block.ear, currentDb);
 
@@ -233,6 +354,30 @@ function executeTrial() {
         isResponseWindowActive = false;
         evaluateResponse();
     }, 2000);
+}
+
+// A catch trial is indistinguishable from a real one to the subject — same
+// response window, same timing — except that no tone is ever played. Any
+// response is, by definition, a false alarm.
+function executeCatchTrial() {
+    hasRespondedThisTrial = false;
+    userHeard = false;
+    isResponseWindowActive = true;
+    currentTrialIsCatch = true;
+    catchTrials++;
+
+    // Deliberately play nothing.
+    toneTimeout = setTimeout(() => {
+        isResponseWindowActive = false;
+        evaluateCatchResponse();
+    }, 2000);
+}
+
+function evaluateCatchResponse() {
+    lastWasCatch = true;
+    if (userHeard) falseAlarms++;
+    // Catch trials never alter the Hughson-Westlake state — just continue.
+    scheduleTrial();
 }
 
 function handleResponse() {
@@ -245,7 +390,9 @@ function handleResponse() {
         // Briefly disable window to prevent double taps causing issues
         isResponseWindowActive = false;
         clearTimeout(toneTimeout);
-        setTimeout(evaluateResponse, 300); // Small delay before evaluation
+        // Route to the right evaluator — but never reveal which trial type it
+        // was, so a guesser cannot learn to avoid the catch trials.
+        setTimeout(currentTrialIsCatch ? evaluateCatchResponse : evaluateResponse, 300);
     } else {
         // False positive
         DOM.warningMessage.classList.remove('hidden');
@@ -254,6 +401,8 @@ function handleResponse() {
 
 function evaluateResponse() {
     trialsInThisBlock++;
+    realTrials++;
+    if (userHeard) realResponses++;
 
     if (userHeard) {
         // It was heard
@@ -408,6 +557,16 @@ DOM.btnStart.addEventListener('click', () => {
     initAudio();
     generateTestBlocks();
     currentBlockIndex = 0;
+
+    // Reset reliability tracking for a fresh run
+    results = { unmasked: { left: {}, right: {} }, masked: { left: {}, right: {} } };
+    catchTrials = 0;
+    falseAlarms = 0;
+    realTrials = 0;
+    realResponses = 0;
+    lastWasCatch = false;
+    currentTrialIsCatch = false;
+
     switchScreen('test-screen');
     startNextBlock();
 });

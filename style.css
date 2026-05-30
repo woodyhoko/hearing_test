@@ -192,6 +192,58 @@ p {
     visibility: hidden;
 }
 
+/* Reliability / random-guessing report */
+.reliability {
+    text-align: left;
+    border-radius: 0.5rem;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.75rem;
+    border: 1px solid var(--border);
+    border-left-width: 4px;
+}
+
+.reliability:empty {
+    display: none;
+}
+
+.reliability .rel-head {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-weight: 600;
+    font-size: 1.05rem;
+    color: var(--text-main);
+}
+
+.reliability .rel-icon {
+    font-size: 1.25rem;
+    line-height: 1;
+}
+
+.reliability .rel-note {
+    margin: 0.5rem 0 0;
+    font-size: 0.9rem;
+    color: var(--text-main);
+}
+
+.reliability .rel-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border);
+    font-size: 0.825rem;
+    color: var(--text-muted);
+}
+
+.reliability.rel-good { border-left-color: var(--success); background-color: rgba(16, 185, 129, 0.08); }
+.reliability.rel-good .rel-icon { color: var(--success); }
+.reliability.rel-warn { border-left-color: #f59e0b; background-color: rgba(245, 158, 11, 0.08); }
+.reliability.rel-warn .rel-icon { color: #f59e0b; }
+.reliability.rel-bad  { border-left-color: var(--warning); background-color: rgba(239, 68, 68, 0.08); }
+.reliability.rel-bad .rel-icon { color: var(--warning); }
+
 /* Results */
 .graph-container {
     background-color: white;
