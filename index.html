@@ -1,85 +1,111 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Professional Audiometry Test</title>
-    <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-</head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pure-Tone Audiometry — In-Browser Hearing Test</title>
+<meta name="description" content="An adaptive in-browser pure-tone audiometry test with contralateral masking and a binomial validity check — plots your audiogram entirely client-side via the Web Audio API.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#070d16;--ink:#eaf4ff;--muted:#8aa2bd;--cy:#22d3ee;--bl:#3b82f6;--gr:#10b981;--line:rgba(255,255,255,.08)}
+  *{box-sizing:border-box;margin:0;padding:0}html{scroll-behavior:smooth}
+  body{background:var(--bg);color:var(--ink);font-family:Sora,system-ui,sans-serif;line-height:1.6;overflow-x:hidden}
+  a{color:inherit;text-decoration:none}
+  .bg{position:fixed;inset:0;z-index:0;background:radial-gradient(900px 600px at 50% -10%,#0d1f38 0,var(--bg) 60%)}
+  canvas#wave{position:fixed;inset:0;z-index:1;opacity:.55}
+  .wrap{position:relative;z-index:3;max-width:1020px;margin:0 auto;padding:0 24px}
+  header{min-height:92vh;display:flex;flex-direction:column;justify-content:center;padding:80px 0 40px}
+  .tag{display:inline-flex;align-items:center;gap:9px;font-family:Inter;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--cy);border:1px solid var(--line);border-radius:100px;padding:6px 15px;width:fit-content;margin-bottom:24px}
+  .tag .d{width:8px;height:8px;border-radius:50%;background:var(--cy);box-shadow:0 0 12px var(--cy);animation:pp 1.6s infinite}@keyframes pp{50%{opacity:.3;transform:scale(.7)}}
+  h1{font-weight:800;font-size:clamp(38px,7vw,82px);line-height:1.02;letter-spacing:-1.5px}
+  h1 .hl{background:linear-gradient(110deg,var(--cy),var(--bl));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .lede{font-size:clamp(16px,2vw,21px);color:var(--muted);max-width:660px;margin:24px 0}
+  .cta{display:flex;flex-wrap:wrap;gap:13px;margin-top:30px}
+  .btn{display:inline-flex;align-items:center;gap:9px;padding:15px 26px;border-radius:12px;font-weight:600;font-size:15px;transition:.18s;border:1px solid var(--line)}
+  .btn.p{background:linear-gradient(110deg,var(--cy),var(--bl));color:#05131f;border:none}.btn.p:hover{transform:translateY(-3px);box-shadow:0 14px 34px rgba(34,211,238,.35)}
+  .btn.g{background:rgba(255,255,255,.03)}.btn.g:hover{border-color:var(--cy);color:var(--cy);transform:translateY(-3px)}
+  .note{font-size:13px;color:var(--muted);margin-top:18px;max-width:640px}
+  section{padding:48px 0}
+  .lbl{font-family:Inter;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--gr);margin-bottom:8px}
+  .ttl{font-weight:700;font-size:clamp(23px,3.4vw,36px);margin-bottom:28px;letter-spacing:-.5px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px}
+  .c{background:rgba(13,25,44,.6);backdrop-filter:blur(8px);border:1px solid var(--line);border-radius:16px;padding:24px;transition:.2s}
+  .c:hover{transform:translateY(-4px);border-color:rgba(34,211,238,.45)}
+  .c .ic{font-size:24px;margin-bottom:12px}.c h3{font-size:16px;margin-bottom:8px}.c p{font-size:14px;color:var(--muted)}
+  .steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px}
+  .step{background:rgba(13,25,44,.5);border:1px solid var(--line);border-radius:14px;padding:20px}
+  .step .n{font-family:Inter;font-weight:700;color:var(--cy);font-size:13px;letter-spacing:1px}
+  .step h4{margin:6px 0 6px;font-size:15px}.step p{font-size:13px;color:var(--muted)}
+  footer{border-top:1px solid var(--line);margin-top:50px;padding:38px 0 56px;text-align:center;color:var(--muted);font-size:14px}
+  footer a{color:var(--cy)}.fl{display:flex;gap:20px;justify-content:center;flex-wrap:wrap;margin-bottom:16px}
+  @media(max-width:640px){
+    .wrap{padding:0 18px}
+    header{min-height:auto;padding:56px 0 28px}
+    .cta{gap:10px}.btn{padding:13px 18px;font-size:14px;flex:1 1 100%;justify-content:center}
+    section{padding:34px 0}.c{padding:20px}
+    .grid{grid-template-columns:1fr}
+  }
+</style></head>
 <body>
-    <div id="app">
-        <!-- Home Screen -->
-        <div id="home-screen" class="screen active">
-            <div class="card">
-                <h1>Audiometry Test</h1>
-                <p>Ensure you are in a quiet environment and wearing your Sennheiser PXC 550 II.</p>
-                <div class="warning-box">
-                    <p><strong>Strict Calibration Required:</strong> To map theoretical absolute Hearing Levels, you MUST set your OS master volume to <strong>100%</strong>, and ensure the touch volume on the headphones is maximum.</p>
-                </div>
-                <div class="warning-box" style="background-color: rgba(59, 130, 246, 0.1); border-color: var(--primary);">
-                    <p><strong>Safety Note:</strong> A software safety lock is engaged. The test will not exceed 80 dB HL. It starts quietly at 30 dB HL and adapts to your hearing.</p>
-                </div>
-                <div class="warning-box" style="background-color: rgba(16, 185, 129, 0.1); border-color: #10b981;">
-                    <p><strong>Validity Check:</strong> Hidden <em>silent catch-trials</em> are mixed into the test. An honest listener almost never responds to silence, so the number of responses during these silent windows is run through a <strong>binomial test</strong> to flag when a result looks like random guessing rather than genuine hearing. Press the button <strong>only</strong> when you truly hear a tone.</p>
-                </div>
-                <button id="btn-start" class="btn primary">Start Diagnostic</button>
-            </div>
-        </div>
-
-        <!-- Testing Screen -->
-        <div id="test-screen" class="screen">
-            <div class="test-header">
-                <h2>Diagnostic in Progress</h2>
-                <div class="status-container">
-                    <div class="info-pill">Phase: <span id="test-phase">Pure Tone</span> (<span id="test-phase-out-of">1/2</span>)</div>
-                    <div class="info-pill">Progress: <span id="test-progress">0%</span></div>
-                </div>
-            </div>
-            
-            <div class="card test-card">
-                <div class="instruction-box">
-                    <p>Press the button <strong>ONLY</strong> when you hear a tone.</p>
-                    <p class="secondary-info">(You may hear soft static noise in one ear during Phase 2; focus on the beeps)</p>
-                </div>
-
-                <div id="warning-message" class="warning-message hidden">
-                    Please press the button only when you hear the tone.
-                </div>
-
-                <button id="btn-respond" class="btn huge pulse">I Hear It</button>
-            </div>
-        </div>
-
-        <!-- Results Screen -->
-        <div id="results-screen" class="screen">
-            <div class="card results-card">
-                <h2>Your Audiogram</h2>
-                <p class="subtitle">Relative Hearing Thresholds (Lower numbers = better hearing)</p>
-
-                <div id="reliability-report" class="reliability"></div>
-
-                <div class="graph-container">
-                    <canvas id="audiogram" width="700" height="400"></canvas>
-                </div>
-                
-                <div class="legend">
-                    <div class="legend-item"><span class="swatch blue">X</span> Left Ear (Pure Tone)</div>
-                    <div class="legend-item"><span class="swatch red">O</span> Right Ear (Pure Tone)</div>
-                    <div class="legend-item"><span class="swatch blue dashed">---</span> Left (Masked)</div>
-                    <div class="legend-item"><span class="swatch red dashed">---</span> Right (Masked)</div>
-                </div>
-                
-                <button id="btn-restart" class="btn secondary">Retest</button>
-            </div>
-        </div>
+<div class="bg"></div><canvas id="wave"></canvas>
+<div class="wrap">
+  <header>
+    <span class="tag"><span class="d"></span>Web Audio · Pure-Tone Audiometry</span>
+    <h1>Map your hearing,<br><span class="hl">tone by tone.</span></h1>
+    <p class="lede">An adaptive pure-tone hearing screen that runs entirely in your browser. It steps frequencies up and down to find your threshold at each pitch, masks the non-test ear, sneaks in silent catch-trials to check you're answering honestly, and draws your audiogram — no app, no upload, no server.</p>
+    <div class="cta">
+      <a class="btn p" href="test.html">🎧 Start the Hearing Test</a>
+      <a class="btn g" href="docs.html">📖 Documentation</a>
+      <a class="btn g" href="https://github.com/woodyhoko/hearing_test">⌥ Source</a>
     </div>
-    
-    <script src="app.js"></script>
-    <!-- documentation + source links -->
-    <div style="position:fixed;bottom:14px;right:14px;z-index:9999;display:flex;gap:8px;font-family:'Inter',system-ui,sans-serif;font-size:12.5px">
-      <a href="docs.html" style="background:rgba(15,23,42,.7);color:#3b82f6;border:1px solid rgba(255,255,255,.15);padding:6px 12px;border-radius:999px;text-decoration:none;backdrop-filter:blur(6px)">📖 Docs</a>
-      <a href="https://github.com/woodyhoko/hearing_test" target="_blank" rel="noopener" style="background:rgba(15,23,42,.7);color:#f8fafc;border:1px solid rgba(255,255,255,.15);padding:6px 12px;border-radius:999px;text-decoration:none;backdrop-filter:blur(6px)">➤ Source on GitHub</a>
+    <p class="note">Best with calibrated over-ear headphones in a quiet room. This is an experiment for self-exploration, <b>not a medical diagnosis</b> — see an audiologist for a clinical assessment.</p>
+  </header>
+
+  <section>
+    <div class="lbl">what it does</div>
+    <div class="ttl">More than a beep test.</div>
+    <div class="grid">
+      <div class="c"><div class="ic">📉</div><h3>Adaptive staircase</h3><p>Tones get quieter when you hear them and louder when you miss, converging on your threshold (in dB HL) per frequency.</p></div>
+      <div class="c"><div class="ic">🔀</div><h3>Contralateral masking</h3><p>A second phase plays soft noise in the non-test ear so a good ear can't "cross-hear" for the weaker one.</p></div>
+      <div class="c"><div class="ic">🤫</div><h3>Silent catch-trials</h3><p>Hidden windows of pure silence. Responses to them are run through a binomial test to flag random guessing.</p></div>
+      <div class="c"><div class="ic">📊</div><h3>Your audiogram</h3><p>Left/right thresholds for both pure-tone and masked phases are plotted on a clinical-style audiogram you can re-test.</p></div>
     </div>
+  </section>
+
+  <section>
+    <div class="lbl">how a run goes</div>
+    <div class="ttl">Three quick steps.</div>
+    <div class="steps">
+      <div class="step"><div class="n">01</div><h4>Calibrate</h4><p>Set system volume to max, pop on your headphones, find a quiet spot.</p></div>
+      <div class="step"><div class="n">02</div><h4>Tap when you hear it</h4><p>Press the button the moment a tone is audible — and only then.</p></div>
+      <div class="step"><div class="n">03</div><h4>Read your audiogram</h4><p>See thresholds per ear and frequency, plus a reliability check.</p></div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="fl"><a href="test.html">Start Test</a><a href="https://github.com/woodyhoko/hearing_test">GitHub</a><a href="docs.html">README</a></div>
+    Built by <a href="https://github.com/woodyhoko">woodyhoko</a> · In-browser pure-tone audiometry
+  </footer>
+</div>
+<script>
+  // Animated stacked sine waves — a quiet "sound" backdrop.
+  const cv=document.getElementById('wave'),x=cv.getContext('2d');let W,H,t=0;
+  function rs(){W=cv.width=innerWidth;H=cv.height=innerHeight;}rs();addEventListener('resize',rs);
+  const waves=[{a:34,f:.006,s:.018,c:'rgba(34,211,238,.5)',o:0},{a:26,f:.009,s:.026,c:'rgba(59,130,246,.45)',o:2},{a:18,f:.013,s:.034,c:'rgba(16,185,129,.4)',o:4}];
+  function draw(){
+    x.clearRect(0,0,W,H);
+    for(const wv of waves){
+      x.beginPath();
+      for(let px=0;px<=W;px+=6){
+        const y=H*0.5+Math.sin(px*wv.f+t*wv.s*30+wv.o)*wv.a*Math.sin(px*0.0016+t*0.01);
+        px?x.lineTo(px,y):x.moveTo(px,y);
+      }
+      x.strokeStyle=wv.c;x.lineWidth=1.6;x.stroke();
+    }
+    t+=1;requestAnimationFrame(draw);
+  }
+  draw();
+</script>
 </body>
 </html>
